@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 project(OpencvLiteTemplate)
 
 set(CMAKE_CXX_STANDARD 20)
+# utf-8
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
 
 set(OpenCV_DIR "../third_party/opencv-lite-shared-world/x64/vc17/lib")
 find_package(OpenCV REQUIRED)
@@ -19,6 +21,6 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 else()
 add_custom_command(TARGET OpencvLiteTemplate POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "../../third_party/opencv-lite-shared-world/x64/vc17/bin/opencv_world480.dll"
+        "../../third_party/opencv-lite-shared-world/x64/vc17/bin/opencv_world480d.dll"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 endif()
