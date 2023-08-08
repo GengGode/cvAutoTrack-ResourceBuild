@@ -1,0 +1,3 @@
+[submodule "third_party/opencv-lite-shared-world"]
+	path = third_party/opencv-lite-shared-world
+	url = https://github.com/GengGode/opencv-lite-shared-world.git
