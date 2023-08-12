@@ -375,84 +375,12 @@ cv::Mat BlockMapResource::getMap_2nd(const cv::Rect &rect)
     m_flag = std::vector<bool>(m_map.size(), false);
     getMap(map, rect, index);
 }
+
 cv::Mat BlockMapResource::getAllMap()
 {
-    cv::Mat map = cv::Mat::zeros(min_rect.size(), CV_8UC3);
-    /*
-    getAllMap  1: 0.0600953 s
-    getAllMap  1: 0.0615604 s
-    getAllMap  1: 0.0650747 s
-    getAllMap  1: 0.0655584 s
-    getAllMap  1: 0.058768 s
-    getAllMap  1: 0.0575199 s
-    getAllMap  1: 0.0606221 s
-    getAllMap  1: 0.0615829 s
-    getAllMap  1: 0.0552091 s
-    getAllMap  1: 0.0566965 s
-    getAllMap  1: 0.0565295 s
-
-    getAllMap  2: 0.440677 s
-    getAllMap  2: 0.219241 s
-    getAllMap  2: 0.206445 s
-    getAllMap  2: 0.240772 s
-    getAllMap  2: 0.207806 s
-    getAllMap  2: 0.221058 s
-    getAllMap  2: 0.203357 s
-    getAllMap  2: 0.227626 s
-    getAllMap  2: 0.240136 s
-    getAllMap  2: 0.221744 s
-    getAllMap  2: 0.202055 s
-
-    // 非并发
-    getAllMap  1: 0.177658 s
-    getAllMap  1: 0.1695 s
-    getAllMap  1: 0.178506 s
-    getAllMap  1: 0.166386 s
-    getAllMap  1: 0.166975 s
-    getAllMap  1: 0.160146 s
-    getAllMap  1: 0.16047 s
-    getAllMap  1: 0.161781 s
-    getAllMap  1: 0.162011 s
-    getAllMap  1: 0.160123 s
-    getAllMap  1: 0.16632 s
-    getAllMap  2: 0.161729 s
-    getAllMap  2: 0.162405 s
-    getAllMap  2: 0.159881 s
-    getAllMap  2: 0.163547 s
-    getAllMap  2: 0.163146 s
-    getAllMap  2: 0.166431 s
-    getAllMap  2: 0.157569 s
-    getAllMap  2: 0.164994 s
-    getAllMap  2: 0.161552 s
-    getAllMap  2: 0.163452 s
-    getAllMap  2: 0.162061 s
-    */
-    for (int i = 0; i <= 10; i++)
-    {
-        auto indexs = find_indexs(min_rect);
-        auto start = std::chrono::steady_clock::now();
-        getMap(map, min_rect, indexs);
-        auto end = std::chrono::steady_clock::now();
-        std::chrono::duration<double> diff = end - start;
-        std::cout << "getAllMap  1: " << diff.count() << " s" << std::endl;
-    }
-    for (int i = 0; i <= 10; i++)
-    {
-        int index = get_contains_index(min_rect);
-        if (index == -1)
-            return map;
-        m_flag = std::vector<bool>(m_map.size(), false);
-        auto start = std::chrono::steady_clock::now();
-        getMap(map, min_rect, index);
-        auto end = std::chrono::steady_clock::now();
-        std::chrono::duration<double> diff = end - start;
-        std::cout << "getAllMap  2: " << diff.count() << " s" << std::endl;
-    }
-
     return getMap(min_rect);
 }
 
-#include <future>
 void BlockMapResource::getMap(const cv::Mat &mat, const cv::Rect &rect, const int index)
 {
     // 如果该区块已经遍历过，直接返回
@@ -472,58 +400,34 @@ void BlockMapResource::getMap(const cv::Mat &mat, const cv::Rect &rect, const in
     // 标记该区块已经遍历过
     m_flag[index] = true;
     // 获取相邻区块
-    // 并发
-    //std::vector<std::future<void>> futures;
+    // 递归版本并发实现速度更慢
     for (auto &i : adjacent(index))
-    {
         if (i != -1)
             getMap(mat, rect, i);
-            //futures.emplace_back(std::async(std::launch::async, [&]
-             //                               { getMap(mat, rect, i); }));
-    }
-   // for (auto &f : futures)
-   // {
-   //     f.get();
-   // }
 }
+#include <future>
 void BlockMapResource::getMap(const cv::Mat &mat, const cv::Rect &rect, const std::vector<int> indexs)
 {
-     for (auto &index : indexs)
+    // 并发实现
+    std::list<std::future<void>> futures;
+    for (auto &index : indexs)
     {
-         // 取交集
-         cv::Rect r = rect & m_rect[index];
-         // 如果交集面积为0，直接返回
-         if (r.area() == 0)
-             continue;
-         // 获取相对于地图图片的范围
-         cv::Rect r1 = r - m_rect[index].tl();
-         // 获取相对于区块图片的范围
-         cv::Rect r2 = r - rect.tl();
-         m_map[index](r1).copyTo(mat(r2));
-     }
-
-    // 并发
-    //std::list<std::future<void>> futures;
-    //for (auto &index : indexs)
-    //{
-    //    // 取交集
-    //    cv::Rect r = rect & m_rect[index];
-    //    // 如果交集面积为0，直接返回
-    //    if (r.area() == 0)
-    //        continue;
-    //    // 获取相对于地图图片的范围
-    //    cv::Rect r1 = r - m_rect[index].tl();
-    //    // 获取相对于区块图片的范围
-    //    cv::Rect r2 = r - rect.tl();
-    //    futures.emplace_back(std::async(std::launch::async, [&]
-    //                                    { 
-    //            copy_roi(m_map[index](r1), mat(r2));
-    //            /*m_map[index](r1).copyTo(mat(r2));*/ }));
-    //}
-    //for (auto &f : futures)
-    //{
-    //    f.get();
-    //}
+        // 取交集
+        cv::Rect r = rect & m_rect[index];
+        // 如果交集面积为0，直接返回
+        if (r.area() == 0)
+            continue;
+        // 获取相对于地图图片的范围
+        cv::Rect r1 = r - m_rect[index].tl();
+        // 获取相对于区块图片的范围
+        cv::Rect r2 = r - rect.tl();
+        futures.emplace_back(std::async(std::launch::async, [r1, r2, index, this, &mat]
+                                        { m_map[index](r1).copyTo(mat(r2)); }));
+    }
+    for (auto &f : futures)
+    {
+        f.get();
+    }
 }
 
 void test_quadTree(BlockMapResource &q, int x, int y, int w, int h)
