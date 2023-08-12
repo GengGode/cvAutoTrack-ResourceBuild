@@ -138,11 +138,20 @@ public:
         int left = -1;
         int right = -1;
     };
+
 private:
+    int get_contains_index(const cv::Rect &rect);
+    std::vector<int> find_indexs(const cv::Rect &rect);
+    Adjacent get_adjacent(const int index);
+    std::array<int, 4> adjacent(const int index);
     void getMap(const cv::Mat &mat, const cv::Rect &rect, int x, int y);
     void getMap(const cv::Mat &mat, const cv::Rect &rect, const int id);
+    void getMap(const cv::Mat &mat, const cv::Rect &rect, const std::vector<int> indexs);
     // 是否递归检索过的区块的标记
     std::vector<bool> m_flag;
+
+private:
+    inline int id(const int pos) { return pos / 2048 == 0 ? 1 : pos / 2048 + 1; }
 
 private:
     // 存储地图图片
@@ -259,60 +268,92 @@ void BlockMapResource::loadMap()
         m_adjacent.push_back(adjacent);
     }
 }
-
-cv::Mat QuadTree::getMap(const cv::Rect &rect)
+/// @brief 获取存在交集的一个区块的索引
+/// @param rect
+/// @return
+int BlockMapResource::get_contains_index(const cv::Rect &rect)
 {
     // 获取中心点
     cv::Point center = rect.tl() + cv::Point(rect.width / 2, rect.height / 2);
     // 获取中心点所在的区块，需要向上取整
-    int x = center.x / 2048 == 0 ? 1 : center.x / 2048 + 1;
-    int y = center.y / 2048 == 0 ? 1 : center.y / 2048 + 1;
-    int index = -1;
+    int x = id(center.x);
+    int y = id(center.y);
+
     // 获取中心点所在的区块的索引
-    if (m_index.find(std::make_pair(x, y)) == m_index.end())
+    if (m_index.find(std::make_pair(x, y)) != m_index.end())
+        return m_index[std::make_pair(x, y)];
+    // 中心点所在的区块不存在，就尝试获取四个顶点所在的区块
+    // 顶点坐标
+    std::vector<cv::Point> points = {
+        rect.tl(),
+        rect.tl() + cv::Point(rect.width, 0),
+        rect.tl() + cv::Point(0, rect.height),
+        rect.tl() + cv::Point(rect.width, rect.height)};
+    // 顶点所在的区块索引
+    std::vector<int> indexs;
+    for (auto &point : points)
     {
-        // 中心点所在的区块不存在，就尝试获取四个顶点所在的区块
-        // 顶点坐标
-        std::vector<cv::Point> points;
-        points.push_back(rect.tl());
-        points.push_back(rect.tl() + cv::Point(rect.width, 0));
-        points.push_back(rect.tl() + cv::Point(0, rect.height));
-        points.push_back(rect.tl() + cv::Point(rect.width, rect.height));
-        // 顶点所在的区块索引
-        std::vector<int> indexs;
-        for (int i = 0; i < points.size(); i++)
+        int x = id(point.x);
+        int y = id(point.y);
+        if (m_index.find(std::make_pair(x, y)) != m_index.end())
+            return m_index[std::make_pair(x, y)];
+    }
+    return -1;
+}
+
+std::vector<int> BlockMapResource::find_indexs(const cv::Rect &rect)
+{
+    // 直接遍历所有区块，获取存在交集的区块的索引
+    std::vector<int> indexs;
+    for (int i = 0; i < m_rect.size(); i++)
+    {
+        cv::Rect r = rect & m_rect[i];
+        if (r.area() > 0)
         {
-            int x = points[i].x / 2048 == 0 ? 1 : points[i].x / 2048 + 1;
-            int y = points[i].y / 2048 == 0 ? 1 : points[i].y / 2048 + 1;
-            if (m_index.find(std::make_pair(x, y)) != m_index.end())
-            {
-                indexs.push_back(m_index[std::make_pair(x, y)]);
-            }
-        }
-        // 如果四个顶点都不在区块中，就返回空
-        if (indexs.size() == 0)
-        {
-            return cv::Mat::zeros(rect.size(), CV_8UC3);
-        }
-        // 如果四个顶点于存在某个区块，就以该区块为起点递归
-        else
-        {
-            index = indexs[0];
+            indexs.push_back(i);
         }
     }
-    else
-    {
-        index = m_index[std::make_pair(x, y)];
-    }
+    return indexs;
+}
+
+BlockMapResource::Adjacent BlockMapResource::get_adjacent(const int index)
+{
+    return m_adjacent[index];
+}
+
+std::array<int, 4> BlockMapResource::adjacent(const int index)
+{
+    Adjacent adjacent = get_adjacent(index);
+    std::array<int, 4> result = {
+        adjacent.up,
+        adjacent.down,
+        adjacent.left,
+        adjacent.right};
+    return result;
+}
+
+// cv::Mat BlockMapResource::getMap(const cv::Rect &rect)
+//{
+//     // 初始化地图图片
+//     cv::Mat map = cv::Mat::zeros(rect.size(), CV_8UC3);
+//     int index = get_contains_index(rect);
+//     if (index == -1)
+//         return map;
+//
+//     // 获取中心点所在的区块的索引
+//     // 根据相邻关系遍历取交集
+//     // 以中心点所在区块为起点，向上下左右遍历
+//     // 以此类推
+//     m_flag = std::vector<bool>(m_map.size(), false);
+//     getMap(map, rect, index);
+//     return map;
+// }
+cv::Mat BlockMapResource::getMap(const cv::Rect &rect)
+{
     // 初始化地图图片
     cv::Mat map = cv::Mat::zeros(rect.size(), CV_8UC3);
-
-    // 根据相邻关系遍历取交集
-    // 以中心点所在区块为起点，向上下左右遍历
-    // 以此类推
-    m_flag = std::vector<bool>(m_map.size(), false);
-    // getMap(map, rect, x, y);
-    getMap(map, rect, index);
+    auto indexs = find_indexs(rect);
+    getMap(map, rect, indexs);
     return map;
 }
 
@@ -347,6 +388,21 @@ cv::Mat BlockMapResource::getMap_1st(const cv::Rect &rect)
 
 cv::Mat BlockMapResource::getAllMap()
 {
+    cv::Mat map = cv::Mat::zeros(min_rect.size(), CV_8UC3);
+    for (int i = 0; i <= 10; i++)
+    {
+        auto indexs = find_indexs(min_rect);
+        getMap(map, min_rect, indexs);
+    }
+    for (int i = 0; i <= 10; i++)
+    {
+        int index = get_contains_index(min_rect);
+        if (index == -1)
+            return map;
+        m_flag = std::vector<bool>(m_map.size(), false);
+        getMap(map, min_rect, index);
+    }
+
     return getMap(min_rect);
 }
 
@@ -374,20 +430,9 @@ void BlockMapResource::getMap(const cv::Mat &mat, const cv::Rect &rect, int x, i
     cv::Rect r1 = r - m_rect[index].tl();
     // 获取相对于区块图片的范围
     cv::Rect r2 = r - rect.tl();
-    // // 获取区块图片
-    // cv::Mat img = m_map[index];
-    // // 取交集
-    // img(r1).copyTo(mat(r2));
-    //
-    // m_map[index](r1).copyTo(mat(r2));
 
     mat(r2) = m_map[index](r1);
 
-    // #define SHOW
-#ifdef SHOW
-    cv::imshow("map", mat);
-    cv::waitKey(100);
-#endif
     // 标记该区块已经遍历过
     m_flag[index] = true;
     // 获取相邻区块
@@ -399,54 +444,84 @@ void BlockMapResource::getMap(const cv::Mat &mat, const cv::Rect &rect, int x, i
     getMap(mat, rect, x, y + 1);
 }
 
+#include <future>
 void BlockMapResource::getMap(const cv::Mat &mat, const cv::Rect &rect, const int id)
 {
     // 如果该区块已经遍历过，直接返回
     if (m_flag[id])
-    {
         return;
-    }
     // 取交集
     cv::Rect r = rect & m_rect[id];
     // 如果交集面积为0，直接返回
     if (r.area() == 0)
-    {
         return;
-    }
     // 获取相对于地图图片的范围
     cv::Rect r1 = r - m_rect[id].tl();
     // 获取相对于区块图片的范围
     cv::Rect r2 = r - rect.tl();
-    // // 获取区块图片
-    // cv::Mat img = m_map[id];
-    // // 取交集
-    // img(r1).copyTo(mat(r2));
     m_map[id](r1).copyTo(mat(r2));
-    // #define SHOW
-#ifdef SHOW
-    cv::imshow("map", mat);
-    cv::waitKey(100);
-#endif
     // 标记该区块已经遍历过
     m_flag[id] = true;
     // 获取相邻区块
-    Adjacent adjacent = m_adjacent[id];
-    // 递归遍历相邻区块
-    if (adjacent.left != -1)
+    // std::ranges::for_each(adjacent(id), [&](int i)
+    //                     { if (i != -1) getMap(mat, rect, i); });
+
+    // c++17
+    // for (auto &i : adjacent(id))
+    //{
+    //    if (i != -1)
+    //        getMap(mat, rect, i);
+    //}
+
+    // 并发
+    std::vector<std::future<void>> futures;
+    for (auto &i : adjacent(id))
     {
-        getMap(mat, rect, adjacent.left);
+        if (i != -1)
+            futures.push_back(std::async(std::launch::async, [&]
+                                         { getMap(mat, rect, i); }));
     }
-    if (adjacent.right != -1)
+    for (auto &f : futures)
     {
-        getMap(mat, rect, adjacent.right);
+        f.get();
     }
-    if (adjacent.up != -1)
+}
+void BlockMapResource::getMap(const cv::Mat &mat, const cv::Rect &rect, const std::vector<int> indexs)
+{
+    // for (auto &index : indexs)
+    //{
+    //     // 取交集
+    //     cv::Rect r = rect & m_rect[index];
+    //     // 如果交集面积为0，直接返回
+    //     if (r.area() == 0)
+    //         continue;
+    //     // 获取相对于地图图片的范围
+    //     cv::Rect r1 = r - m_rect[index].tl();
+    //     // 获取相对于区块图片的范围
+    //     cv::Rect r2 = r - rect.tl();
+    //     m_map[index](r1).copyTo(mat(r2));
+    // }
+
+    // 并发
+    std::vector<std::future<void>> futures;
+    for (auto &index : indexs)
     {
-        getMap(mat, rect, adjacent.up);
+        futures.push_back(std::async(std::launch::async, [&]
+                                     {
+                                         // 取交集
+                                         cv::Rect r = rect & m_rect[index];
+                                         // 如果交集面积为0，直接返回
+                                         if (r.area() == 0)
+                                             return;
+                                         // 获取相对于地图图片的范围
+                                         cv::Rect r1 = r - m_rect[index].tl();
+                                         // 获取相对于区块图片的范围
+                                         cv::Rect r2 = r - rect.tl();
+                                         m_map[index](r1).copyTo(mat(r2)); }));
     }
-    if (adjacent.down != -1)
+    for (auto &f : futures)
     {
-        getMap(mat, rect, adjacent.down);
+        f.get();
     }
 }
 
@@ -461,7 +536,7 @@ void test_quadTree(BlockMapResource &q, int x, int y, int w, int h)
 void save_quadTree(BlockMapResource &q)
 {
     cv::Mat map = q.getAllMap();
-    cv::imwrite("AllMap.png", map);
+    // cv::imwrite("AllMap.png", map);
     cv::Mat mini_map;
     double f = 600.0 / 2048.0;
     cv::resize(map, mini_map, cv::Size(), f, f, cv::INTER_NEAREST);
