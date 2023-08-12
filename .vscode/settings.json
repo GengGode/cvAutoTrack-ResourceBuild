@@ -69,7 +69,9 @@
         "xstddef": "cpp",
         "xtr1common": "cpp",
         "xtree": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "condition_variable": "cpp",
+        "future": "cpp"
     },
     "editor.formatOnPaste": true,
     "editor.formatOnSave": true,
