@@ -116,10 +116,11 @@ public:
     }
 };
 
+class BlockMapResource
 {
 public:
-    QuadTree();
-    ~QuadTree();
+    BlockMapResource();
+    ~BlockMapResource();
 
     // 加载地图图片
     void loadMap();
@@ -130,6 +131,13 @@ public:
 
     cv::Mat getAllMap();
 
+    struct Adjacent
+    {
+        int up = -1;
+        int down = -1;
+        int left = -1;
+        int right = -1;
+    };
 private:
     void getMap(const cv::Mat &mat, const cv::Rect &rect, int x, int y);
     void getMap(const cv::Mat &mat, const cv::Rect &rect, const int id);
@@ -143,13 +151,7 @@ private:
     std::vector<cv::Rect> m_rect;
     // 存储地图图片对应的地图区块位置在vector中的索引
     std::map<std::pair<int, int>, int> m_index;
-    struct Adjacent
-    {
-        int up = -1;
-        int down = -1;
-        int left = -1;
-        int right = -1;
-    };
+
     // 存储地图图片对应的区块相邻关系
     std::vector<Adjacent> m_adjacent;
     cv::Rect min_rect;
@@ -157,16 +159,16 @@ private:
     cv::Point min_br_point;
 };
 
-QuadTree::QuadTree()
+BlockMapResource::BlockMapResource()
 {
     loadMap();
 }
 
-QuadTree::~QuadTree()
+BlockMapResource::~BlockMapResource()
 {
 }
 
-void QuadTree::loadMap()
+void BlockMapResource::loadMap()
 {
     // 遍历./map/目录下的所有图片
     // i_j.png 为(i,j)区块的图片
@@ -314,7 +316,7 @@ cv::Mat QuadTree::getMap(const cv::Rect &rect)
     return map;
 }
 
-cv::Mat QuadTree::getMap_1st(const cv::Rect &rect)
+cv::Mat BlockMapResource::getMap_1st(const cv::Rect &rect)
 {
     // 获取中心点
     cv::Point center = rect.tl() + cv::Point(rect.width / 2, rect.height / 2);
@@ -343,12 +345,12 @@ cv::Mat QuadTree::getMap_1st(const cv::Rect &rect)
     return map;
 }
 
-cv::Mat QuadTree::getAllMap()
+cv::Mat BlockMapResource::getAllMap()
 {
     return getMap(min_rect);
 }
 
-void QuadTree::getMap(const cv::Mat &mat, const cv::Rect &rect, int x, int y)
+void BlockMapResource::getMap(const cv::Mat &mat, const cv::Rect &rect, int x, int y)
 {
     // 获取x,y区块的索引
     if (m_index.find(std::make_pair(x, y)) == m_index.end())
@@ -397,7 +399,7 @@ void QuadTree::getMap(const cv::Mat &mat, const cv::Rect &rect, int x, int y)
     getMap(mat, rect, x, y + 1);
 }
 
-void QuadTree::getMap(const cv::Mat &mat, const cv::Rect &rect, const int id)
+void BlockMapResource::getMap(const cv::Mat &mat, const cv::Rect &rect, const int id)
 {
     // 如果该区块已经遍历过，直接返回
     if (m_flag[id])
@@ -448,7 +450,7 @@ void QuadTree::getMap(const cv::Mat &mat, const cv::Rect &rect, const int id)
     }
 }
 
-void test_quadTree(QuadTree &q, int x, int y, int w, int h)
+void test_quadTree(BlockMapResource &q, int x, int y, int w, int h)
 {
     cv::Rect rect(x, y, w, h);
     cv::Mat map = q.getMap(rect);
@@ -456,7 +458,7 @@ void test_quadTree(QuadTree &q, int x, int y, int w, int h)
     cv::waitKey(100);
 }
 
-void save_quadTree(QuadTree &q)
+void save_quadTree(BlockMapResource &q)
 {
     cv::Mat map = q.getAllMap();
     cv::imwrite("AllMap.png", map);
@@ -468,7 +470,7 @@ void save_quadTree(QuadTree &q)
 
 void test_1st()
 {
-    QuadTree quadTree;
+    BlockMapResource quadTree;
 
     auto start = std::chrono::steady_clock::now();
 
