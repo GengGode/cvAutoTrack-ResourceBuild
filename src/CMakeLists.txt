@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(OpencvLiteTemplate)
+project(cvAutoTrack-ResourceBuild)
 
 set(CMAKE_CXX_STANDARD 20)
 # utf-8
@@ -16,11 +16,11 @@ target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "../../third_party/opencv-lite-shared-world/x64/vc17/bin/opencv_world480d.dll"
+        "../../third_party/opencv-lite-shared-world/x64/vc17/bin/opencv_world480.dll"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 else()
-add_custom_command(TARGET OpencvLiteTemplate POST_BUILD
+add_custom_command(TARGET cvAutoTrack-ResourceBuild POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "../../third_party/opencv-lite-shared-world/x64/vc17/bin/opencv_world480d.dll"
+        "../../third_party/opencv-lite-shared-world/x64/vc17/bin/opencv_world480.dll"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 endif()

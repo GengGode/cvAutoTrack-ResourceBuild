@@ -14,7 +14,108 @@
 // 2_1.png 为(2,1)区块的图片
 // 2_2.png 为(2,2)区块的图片
 // 以此类推
-class QuadTree
+
+/// @brief 用来存储地图图片区块以及对应的地图范围
+struct _BlockMapNode
+{
+    std::pair<int, int> id;
+
+    int depth = 0;
+    bool is_leaf = false;
+
+    // 存储地图图片
+    cv::Mat image;
+    // 存储地图图片对应的地图范围
+    cv::Rect rect;
+
+    // 存储地图图片对应的区块相邻关系
+    std::shared_ptr<_BlockMapNode> up;
+    std::shared_ptr<_BlockMapNode> down;
+    std::shared_ptr<_BlockMapNode> left;
+    std::shared_ptr<_BlockMapNode> right;
+};
+
+class _BlockMap
+{
+public:
+    _BlockMap();
+    ~_BlockMap();
+
+    /// @brief 插入区块
+    /// @param x 区块id
+    /// @param y 区块id
+    /// @param image 区块图片
+    /// @param rect 区块范围
+    void insert(const int x, const int y, const cv::Mat &image, const cv::Rect &rect)
+    {
+        std::shared_ptr<_BlockMapNode> node = std::make_shared<_BlockMapNode>();
+        node->id = std::make_pair(x, y);
+        node->image = image;
+        node->rect = rect;
+        node->depth = 0;
+        node->is_leaf = true;
+        m_map[std::make_pair(x, y)] = node;
+
+        m_rect.x = std::min(m_rect.x, rect.x);
+        m_rect.y = std::min(m_rect.y, rect.y);
+        m_rect.width = std::max(m_rect.width, rect.x + rect.width) - m_rect.x;
+        m_rect.height = std::max(m_rect.height, rect.y + rect.height) - m_rect.y;
+    }
+
+    bool find(const int x, const int y)
+    {
+        return m_map.find(std::make_pair(x, y)) != m_map.end();
+    }
+
+    void remove(const int x, const int y)
+    {
+        m_map.erase(std::make_pair(x, y));
+    }
+
+    std::shared_ptr<_BlockMapNode> get(const int x, const int y)
+    {
+        return get_not_null(x, y);
+    }
+
+private:
+    std::shared_ptr<_BlockMapNode> get_not_null(const int x, const int y)
+    {
+        if (m_map.find(std::make_pair(x, y)) == m_map.end())
+        {
+            // return std::make_shared<_BlockMapNode>();
+            auto node = std::make_shared<_BlockMapNode>();
+            node->id = std::make_pair(x, y);
+            node->depth = 0;
+            node->is_leaf = true;
+            m_map[std::make_pair(x, y)] = node;
+        }
+        return m_map[std::make_pair(x, y)];
+    }
+
+private:
+    std::map<std::pair<int, int>, std::shared_ptr<_BlockMapNode>> m_map;
+    cv::Rect m_rect;
+};
+
+class BlockMap
+{
+    _BlockMap map;
+
+public:
+    void insert(const int x, const int y, const cv::Mat &image)
+    {
+        map.insert(x, y, image, cv::Rect((x - 1) * 2048, (y - 1) * 2048, 2048, 2048));
+    }
+    cv::Mat get(const int x, const int y)
+    {
+        map.get(x, y)->image;
+    }
+    void remove(const int x, const int y)
+    {
+        map.remove(x, y);
+    }
+};
+
 {
 public:
     QuadTree();
