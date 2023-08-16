@@ -9,7 +9,7 @@ set(OpenCV_DIR "../third_party/opencv-lite-shared-world/x64/vc17/lib")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} main.cpp  BlockMapResource.h) 
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
 
 # copy dll to exe folder

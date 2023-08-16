@@ -71,7 +71,10 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "condition_variable": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "numeric": "cpp",
+        "filesystem": "cpp",
+        "regex": "cpp"
     },
     "editor.formatOnPaste": true,
     "editor.formatOnSave": true,
