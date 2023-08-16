@@ -74,7 +74,9 @@
         "future": "cpp",
         "numeric": "cpp",
         "filesystem": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "ranges": "cpp",
+        "span": "cpp"
     },
     "editor.formatOnPaste": true,
     "editor.formatOnSave": true,
