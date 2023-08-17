@@ -156,7 +156,7 @@ private:
 
     cv::Rect gen_bounding_rect()
     {
-        return std::accumulate(blocks.begin(), blocks.end(), cv::Rect(), [](const cv::Rect &rect, const auto &block)
+        return std::accumulate(blocks.begin(), blocks.end(), cv::Rect(0, 0, 16, 16), [](const cv::Rect &rect, const auto &block)
                                { return rect | block.second.rect; });
     }
 
@@ -171,8 +171,6 @@ private:
                              { return (rect & blocks[index].rect).area() > 0; });
         return indexs;
     }
-
-    cv::Mat get_map(const cv::Rect &rect, const std::vector<int> indexs);
 
 private:
     // 原点图片在vector中的索引
