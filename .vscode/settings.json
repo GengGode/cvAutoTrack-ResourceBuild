@@ -77,7 +77,12 @@
         "regex": "cpp",
         "ranges": "cpp",
         "span": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "cstdarg": "cpp",
+        "deque": "cpp",
+        "queue": "cpp",
+        "stack": "cpp",
+        "variant": "cpp"
     },
     "editor.formatOnPaste": true,
     "editor.formatOnSave": true,
