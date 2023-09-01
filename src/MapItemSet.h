@@ -31,9 +31,6 @@ public:
     /// @param rect 范围
     /// @return std::vector<std::shared_ptr<ItemInface>> 物品项集合
     virtual std::vector<std::shared_ptr<ItemInface>> find(const cv::Rect2d &rect) = 0;
-    /// @brief 构造物品项集合
-    /// @param item 物品项
-    virtual void make(const std::vector<std::shared_ptr<ItemInface>> &items) = 0;
 
 public:
     /// @brief 判断物品项集合是否为空
@@ -68,7 +65,8 @@ public:
         root = std::make_shared<Node>();
         root->rect = rect;
         root->center = rect.tl() + cv::Point2d(rect.width / 2.0, rect.height / 2.0);
-        make(items);
+        for (auto &item : items)
+            root->insert(item);
     }
 
 public:
@@ -137,10 +135,10 @@ public:
     public:
         std::list<std::shared_ptr<ItemInface>> items;
         size_t item_set_size = 0;
-        size_t node_count = 0;
+        size_t node_count = 1; // 至少会有root节点
 
     public:
-        size_t node_item_max = 32;//32;// 512;
+        size_t node_item_max = 32; // 32;// 512;
 
     public:
         bool is_leaf() { return childs.empty(); }
@@ -219,7 +217,7 @@ public:
             if (is_leaf())
             {
                 // 如果当前节点范围完全包含在范围内，直接返回当前节点的物品集合
-                 if (rect.contains(rect.tl()) && rect.contains(rect.br()))
+                if (rect.contains(rect.tl()) && rect.contains(rect.br()))
                 {
                     rect_items.insert(rect_items.end(), items.begin(), items.end());
                     return rect_items;
@@ -240,6 +238,24 @@ public:
                 }
             return rect_items;
         }
+        /// @brief 查找范围内的递归子节点
+        /// @param rect 范围
+        /// @return std::list<std::shared_ptr<Node>> 子节点集合
+        std::list<std::shared_ptr<Node>> find_childs(const cv::Rect2d &rect)
+        {
+            if (is_intersect(rect) == false)
+                return {};
+            if (is_leaf() && items.empty() == false)
+                return {this->shared_from_this()};
+            std::list<std::shared_ptr<Node>> childs;
+            for (auto &child : this->childs)
+                if (child->is_intersect(rect))
+                {
+                    auto child_childs = child->find_childs(rect);
+                    childs.insert(childs.end(), child_childs.begin(), child_childs.end());
+                }
+            return childs;
+        }
 
     public:
         std::shared_ptr<Node> parent;
@@ -259,21 +275,38 @@ public:
             return {};
         return root->find(rect);
     }
-    void make(const std::vector<std::shared_ptr<ItemInface>> &items) override
+    std::list<std::shared_ptr<Node>> find_childs(const cv::Rect2d &rect)
     {
         if (root == nullptr)
-            return;
-        for (auto &item : items)
-            root->insert(item);
+            return {};
+        return root->find_childs(rect);
     }
 
 public:
+    void cout(std::shared_ptr<Node> node = nullptr, int depth = 0)
+    {
+        if (node == nullptr && depth != 0)
+            return;
+        if (node == nullptr)
+            node = root;
+
+        auto space = std::string();
+        for (int i = 0; i < depth; i++)
+            space += "\t";
+        std::cout << space << "node: " << node->rect << std::endl;
+        std::cout << space << "node size: " << node->item_set_size << std::endl;
+        std::cout << space << "node node count: " << node->counts() << std::endl;
+        for (auto &item : node->items)
+            std::cout << space << "\titem: " << item->pos << std::endl;
+        for (auto &child : node->childs)
+            cout(child, depth + 1);
+    }
     void print()
     {
         double scale = 15;
-        auto size = cv::Size(root->rect.size().width / scale, root->rect.size().height / scale);
+        auto size = cv::Size(static_cast<int>(root->rect.size().width / scale), static_cast<int>(root->rect.size().height / scale));
         cv::Mat img = cv::Mat::zeros(size, CV_8UC3);
-        auto pos_offset = cv::Point2d(-root->rect.tl())/ scale;
+        auto pos_offset = cv::Point2d(-root->rect.tl()) / scale;
         int count = 0;
         int max_depth = 0;
         // 遍历树
@@ -281,14 +314,6 @@ public:
         {
             if (node == nullptr)
                 return;
-            // auto space = std::string();
-            // for (int i = 0; i < depth; i++)
-            //     space += "\t";
-            // std::cout << space << "node: " << node->rect << std::endl;
-            // std::cout << space << "node size: " << node->item_set_size << std::endl;
-            // std::cout << space << "node node count: " << node->counts() << std::endl;
-            // for (auto &item : node->items)
-            //     std::cout << space << "\titem: " << item->pos << std::endl;
             count++;
 
             print_node(node->top_left, depth + 1);
@@ -301,11 +326,11 @@ public:
             if (depth > max_depth)
                 max_depth = depth;
             // 绘制树
-            auto rect = cv::Rect(node->rect.x / scale, node->rect.y / scale, node->rect.width / scale, node->rect.height / scale) + cv::Point(pos_offset);
+            auto rect = cv::Rect(static_cast<int>(node->rect.x / scale), static_cast<int>(node->rect.y / scale), static_cast<int>(node->rect.width / scale), static_cast<int>(node->rect.height / scale)) + cv::Point(pos_offset);
             cv::rectangle(img, rect, cv::Scalar(255, 255, depth * 8), 1, cv ::LINE_AA);
-            cv::circle(img, node->center/ scale + pos_offset, 1, cv::Scalar(0, depth * 8, 255), 1, cv::LINE_AA);
+            cv::circle(img, node->center / scale + pos_offset, 1, cv::Scalar(0, depth * 8, 255), 1, cv::LINE_AA);
             for (auto &item : node->items)
-                cv::circle(img, item->pos/ scale + pos_offset, 1, cv::Scalar(0, 255, depth * 8), 1, cv::LINE_AA);
+                cv::circle(img, item->pos / scale + pos_offset, 1, cv::Scalar(0, 255, depth * 8), 1, cv::LINE_AA);
             cv::imshow("tree", img);
             cv::waitKey(1);
         };

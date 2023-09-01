@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
 set(OpenCV_DIR "../third_party/opencv-lite-shared-world/x64/vc17/lib")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
+include_directories("../third_party")
 
 add_executable(${PROJECT_NAME} main.cpp  BlockMapResource.h) 
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})

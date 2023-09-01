@@ -76,7 +76,8 @@
         "filesystem": "cpp",
         "regex": "cpp",
         "ranges": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "fstream": "cpp"
     },
     "editor.formatOnPaste": true,
     "editor.formatOnSave": true,
